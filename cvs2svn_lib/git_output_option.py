@@ -267,7 +267,11 @@ class GitOutputOption(DVCSOutputOption):
   def process_primary_commit(self, svn_commit):
     author = self._get_author(svn_commit)
     log_msg = self._get_log_msg(svn_commit)
-
+    log_msg = log_msg + "\nChanged files:"
+    for (cvs_path, rev) in sorted(
+        (cvs_rev.cvs_file.cvs_path, cvs_rev.rev) for cvs_rev in svn_commit.get_cvs_items()
+        ):
+        log_msg = log_msg + "\n    " + cvs_path+ " -> " + rev
     lods = set()
     for cvs_rev in svn_commit.get_cvs_items():
       lods.add(cvs_rev.lod)
