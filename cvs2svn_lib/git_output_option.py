@@ -411,10 +411,12 @@ class GitOutputOption(DVCSOutputOption):
               source_lod
               ),
           )
-      for cvs_path in sorted(
-            cvs_symbol.cvs_file.cvs_path for cvs_symbol in cvs_symbols
-            ):
-        log_msg += "\n    %s" % (cvs_path,)
+      rev = {}
+      for cvs_symbol in cvs_symbols:
+          cvs_file = cvs_symbol.get_cvs_revision_source(Ctx()._cvs_items_db)
+          rev[cvs_file.cvs_path] = cvs_file.rev
+      for cvs_path in sorted(rev.iterkeys()):
+        log_msg += "\n    %s -> %s" % (cvs_path, rev[cvs_path])
     if is_initial_lod_creation:
       if cvs_files_to_delete:
         log_msg += "\nDelete:"
