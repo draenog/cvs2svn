@@ -169,8 +169,11 @@ class _Stats:
 
     # Branches that are rooted at the same revision are also
     # possible parents:
-    for branch_id in parent_cvs_rev.branch_ids:
+    symbol = cvs_tag.symbol
+    for branch_id in parent_cvs_rev.branch_ids + parent_cvs_rev.tag_ids:
       parent_symbol = cvs_file_items[branch_id].symbol
+      if parent_symbol == symbol:
+        continue
       register(parent_symbol)
 
   def is_ghost(self):
