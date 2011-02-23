@@ -24,6 +24,7 @@ from cvs2svn_lib.common import normalize_svn_path
 from cvs2svn_lib.log import logger
 from cvs2svn_lib.symbol import Trunk
 from cvs2svn_lib.symbol import TypedSymbol
+from cvs2svn_lib.symbol import Symbol
 from cvs2svn_lib.symbol import Branch
 from cvs2svn_lib.symbol import Tag
 from cvs2svn_lib.symbol import ExcludedSymbol
@@ -380,6 +381,13 @@ class HeuristicPreferredParentRule(StrategyRule):
   of the symbol in question.  If multiple symbols are tied, choose the
   one that comes first according to the Symbol class's natural sort
   order."""
+
+  def start(self, symbol_stats):
+
+    for stat in symbol_stats:
+      for symbol in stat.possible_parents.keys():
+        if symbol_stats.get_stats(symbol).branch_commit_count <=0:
+          del stat.possible_parents[symbol]
 
   def _get_preferred_parent(self, stats):
     """Return the LODs that are most often possible parents in STATS.
