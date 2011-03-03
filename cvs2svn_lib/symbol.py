@@ -127,7 +127,7 @@ class Trunk(LineOfDevelopment):
       return cmp(self.project, other.project)
     elif isinstance(other, Symbol):
       # Allow Trunk to compare less than Symbols:
-      return -1
+      return +1
     else:
       raise NotImplementedError()
 
@@ -179,7 +179,7 @@ class Symbol(AbstractSymbol):
              or cmp(self.id, other.id)
     elif isinstance(other, Trunk):
       # Allow Symbols to compare greater than Trunk:
-      return +1
+      return -1
     else:
       raise NotImplementedError()
 
