@@ -25,6 +25,7 @@ For information about the format allowed by git-fast-import, see:
 import bisect
 import time
 
+from cvs2svn_lib import config
 from cvs2svn_lib.common import InternalError
 from cvs2svn_lib.log import logger
 from cvs2svn_lib.context import Ctx
@@ -35,6 +36,8 @@ from cvs2svn_lib.cvs_item import CVSSymbol
 from cvs2svn_lib.dvcs_common import DVCSOutputOption
 from cvs2svn_lib.dvcs_common import MirrorUpdater
 from cvs2svn_lib.key_generator import KeyGenerator
+from cvs2svn_lib.artifact_manager import artifact_manager
+from cvs2svn_lib.notescreator import NotesCreator
 
 
 class ExpectedDirectoryError(Exception):
@@ -194,10 +197,12 @@ class GitOutputOption(DVCSOutputOption):
     self.tie_tag_fixup_branches = tie_tag_fixup_branches
 
     self._mark_generator = KeyGenerator(GitOutputOption._first_commit_mark)
+    self.notes = NotesCreator()
 
   def register_artifacts(self, which_pass):
     DVCSOutputOption.register_artifacts(self, which_pass)
     self.revision_writer.register_artifacts(which_pass)
+    artifact_manager.register_temp_file_needed(config.NOTES_STORE, which_pass)
 
   def check_symbols(self, symbol_map):
     # FIXME: What constraints does git impose on symbols?
@@ -216,6 +221,9 @@ class GitOutputOption(DVCSOutputOption):
     self._marks = {}
 
     self.revision_writer.start(self._mirror, self.f)
+
+    with open(artifact_manager.get_temp_file(config.NOTES_STORE),'r') as notes_file:
+        self.notes.load_notes(notes_file)
 
   def _create_commit_mark(self, lod, revnum):
     mark = self._mark_generator.gen_id()
@@ -266,12 +274,16 @@ class GitOutputOption(DVCSOutputOption):
 
   def process_primary_commit(self, svn_commit):
     author = self._get_author(svn_commit)
-    log_msg = self._get_log_msg(svn_commit)
+    log_msg_orig = self._get_log_msg(svn_commit)
+    log_msg = log_msg_orig
     log_msg = log_msg + "\nChanged files:"
+    revspec = None
     for (cvs_path, rev) in sorted(
         (cvs_rev.cvs_file.cvs_path, cvs_rev.rev) for cvs_rev in svn_commit.get_cvs_items()
         ):
         log_msg = log_msg + "\n    " + cvs_path+ " -> " + rev
+        if cvs_path.endswith('.spec'):
+            revspec = rev
     lods = set()
     for cvs_rev in svn_commit.get_cvs_items():
       lods.add(cvs_rev.lod)
@@ -285,9 +297,10 @@ class GitOutputOption(DVCSOutputOption):
       self.f.write('commit refs/heads/master\n')
     else:
       self.f.write('commit refs/heads/%s\n' % (lod.name,))
+    _mark = self._create_commit_mark(lod, svn_commit.revnum)
     self.f.write(
         'mark :%d\n'
-        % (self._create_commit_mark(lod, svn_commit.revnum),)
+        % (_mark,)
         )
     self.f.write(
         'committer %s %d +0000\n' % (author, svn_commit.date,)
@@ -298,6 +311,20 @@ class GitOutputOption(DVCSOutputOption):
       self.revision_writer.process_revision(cvs_rev, post_commit=False)
 
     self.f.write('\n')
+
+    if revspec is not None and self.notes.logs[revspec] != log_msg_orig:
+        _note_author = self._map_author(Ctx()._metadata_db[self.notes.metadata_id[revspec]].author)
+        _note_message = 'Changed commitlog for rev. %s' % revspec
+        self.f.write('commit refs/notes/commits\n')
+        self.f.write(
+            'committer %s %d +0000\n' % (_note_author, self.notes.dates[revspec],)
+            )
+        self.f.write('data %d\n' % (len(_note_message),))
+        self.f.write(_note_message)
+        self.f.write('N inline :%d\n' %  (_mark,))
+        self.f.write('data %d\n' % (len(self.notes.logs[revspec]),))
+        self.f.write('%s\n' % (self.notes.logs[revspec],))
+
     self._mirror.end_commit()
 
   def process_post_commit(self, svn_commit):

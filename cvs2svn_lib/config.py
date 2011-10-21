@@ -207,3 +207,5 @@ CVS_CHECKOUT_DB = 'cvs-checkout.db'
 # flush a commit if a 5 minute gap occurs.
 COMMIT_THRESHOLD = 5 * 60
 
+# Store for commit logs.
+NOTES_STORE = 'notes.db'
