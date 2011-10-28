@@ -312,7 +312,7 @@ class GitOutputOption(DVCSOutputOption):
 
     self.f.write('\n')
 
-    if revspec is not None and self.notes.logs[revspec] != log_msg_orig:
+    if revspec is not None and revspec in self.notes.logs and self.notes.logs[revspec] != log_msg_orig:
         _note_author = self._map_author(Ctx()._metadata_db[self.notes.metadata_id[revspec]].author)
         _note_message = 'Changed commitlog for rev. %s' % revspec
         self.f.write('commit refs/notes/commits\n')
