@@ -129,13 +129,21 @@ class _Stats:
 
     self.possible_parents[lod] = self.possible_parents.get(lod, 0) + 1
 
+  def register_possible_parent_spec(self, lod):
+    """Register that LOD was a possible parent for SELF.lod in a file."""
+
+    self.possible_parents[lod] = self.possible_parents.get(lod, 0) + 1.2
+
   def register_branch_possible_parents(self, cvs_branch, cvs_file_items):
     """Register any possible parents of this symbol from CVS_BRANCH."""
 
     # This routine is a bottleneck.  So we define some local variables
     # to speed up access to frequently-needed variables.
-    register = self.register_possible_parent
     parent_cvs_rev = cvs_file_items[cvs_branch.source_id]
+    if parent_cvs_rev.cvs_path.endswith('.spec'):
+        register = self.register_possible_parent_spec
+    else:
+        register = self.register_possible_parent
 
     # The "obvious" parent of a branch is the branch holding the
     # revision where the branch is rooted:
@@ -160,8 +168,11 @@ class _Stats:
 
     # This routine is a bottleneck.  So use local variables to speed
     # up access to frequently-needed objects.
-    register = self.register_possible_parent
     parent_cvs_rev = cvs_file_items[cvs_tag.source_id]
+    if parent_cvs_rev.cvs_path.endswith('.spec'):
+        register = self.register_possible_parent_spec
+    else:
+        register = self.register_possible_parent
 
     # The "obvious" parent of a tag is the branch holding the
     # revision where the branch is rooted:
