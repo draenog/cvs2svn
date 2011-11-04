@@ -12,8 +12,8 @@ class NotesCreator:
         self.changing_rev = {}
 
         self._firstlinepattern = re.compile(r'^# \$''Revision:(.*)\$, \$''Date:(.*)\$')
-        self._datepattern = re.compile(r'^%define[\t ]*date[\t ]*.*$')
-        self._revpattern = re.compile(r'Revision\s*(\S+)')
+        self._datepattern = re.compile(r'^%define[\t ]*date[\t ]*.%\(echo')
+        self._revpattern = re.compile(r'^Revision\s*(\S+)')
 
 
 
