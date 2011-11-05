@@ -373,8 +373,8 @@ class Timestamper:
             % (time.asctime(time.gmtime(timestamp)),
                time.asctime(time.gmtime(self.timestamp)),)
             )
-    elif timestamp < self.timestamp + 1.0:
-      self.timestamp = self.timestamp + 1.0
+    elif timestamp < self.timestamp + 0.01:
+      self.timestamp = self.timestamp + 0.01
       if not change_expected and logger.is_on(logger.VERBOSE):
         logger.verbose(
             'Timestamp "%s" adjusted to "%s" to ensure monotonicity.'
