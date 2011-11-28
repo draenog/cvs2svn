@@ -60,6 +60,24 @@ class KeywordHandlingPropertySetter(FilePropertySetter):
   def set_properties(self, cvs_file):
     self.maybe_set_property(cvs_file, self.propname, self.value)
 
+class SpecFileKeyword(FilePropertySetter):
+
+  _eol_propname = '_eol_fix'
+  _keywords_propname = '_keyword_handling'
+
+  def __init__(self, value):
+    if value not in ['collapsed', 'expanded', 'untouched', None]:
+      raise FatalError(
+          'Value for %s must be "collapsed", "expanded", or "untouched"'
+          % (self.propname,)
+          )
+    self.value = value
+
+  def set_properties(self, cvs_file):
+      if cvs_file.rcs_basename.endswith('.spec'):
+        self.maybe_set_property(cvs_file, self._eol_propname, '\n')
+        self.maybe_set_property(cvs_file, self._keywords_propname, self.value)
+
 
 class DVCSRunOptions(RunOptions):
   """Dumping ground for whatever is common to GitRunOptions and

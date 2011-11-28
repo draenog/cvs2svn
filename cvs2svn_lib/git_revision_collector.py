@@ -16,9 +16,12 @@
 
 """Write file contents to a stream of git-fast-import blobs."""
 
+from cvs2svn_lib import config
 from cvs2svn_lib.cvs_item import CVSRevisionDelete
+from cvs2svn_lib.notescreator import NotesCreator
 from cvs2svn_lib.revision_manager import RevisionCollector
 from cvs2svn_lib.key_generator import KeyGenerator
+from cvs2svn_lib.artifact_manager import artifact_manager
 
 
 class GitRevisionCollector(RevisionCollector):
@@ -27,9 +30,11 @@ class GitRevisionCollector(RevisionCollector):
   def __init__(self, blob_filename, revision_reader):
     self.blob_filename = blob_filename
     self.revision_reader = revision_reader
+    self.notescr = NotesCreator()
 
   def register_artifacts(self, which_pass):
     self.revision_reader.register_artifacts(which_pass)
+    artifact_manager.register_temp_file(config.NOTES_STORE, which_pass)
 
   def start(self):
     self.revision_reader.start()
@@ -47,6 +52,8 @@ class GitRevisionCollector(RevisionCollector):
     # FIXME: We have to decide what to do about keyword substitution
     # and eol_style here:
     fulltext = self.revision_reader.get_content(cvs_rev)
+    if(cvs_rev.cvs_path.endswith('.spec')):
+      fulltext = self.notescr.process_spec(fulltext, cvs_rev.rev, cvs_rev.timestamp, cvs_rev.metadata_id)
 
     mark = self._mark_generator.gen_id()
     self.dump_file.write('blob\n')
@@ -82,5 +89,7 @@ class GitRevisionCollector(RevisionCollector):
   def finish(self):
     self.revision_reader.finish()
     self.dump_file.close()
+    with open(artifact_manager.get_temp_file(config.NOTES_STORE),'w') as notes_file:
+        self.notescr.dump_notes(notes_file)
 
 
