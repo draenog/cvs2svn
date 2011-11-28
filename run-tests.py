@@ -995,24 +995,24 @@ class PruneWithCare(Cvs2SvnTestCase):
     # directory src/gnu/usr.bin/cvs/contrib/pcl-cvs/ in FreeBSD's CVS
     # repository (see issue #1302).  Step 4 is the doozy:
     #
-    #   revision 1:  adds trunk/blah/, adds trunk/blah/cookie
-    #   revision 2:  adds trunk/blah/NEWS
-    #   revision 3:  deletes trunk/blah/cookie
-    #   revision 4:  deletes blah [re-deleting trunk/blah/cookie pruned blah!]
+    #   revision 1:  adds trunk/blah/, adds trunk/blah/first
+    #   revision 2:  adds trunk/blah/second
+    #   revision 3:  deletes trunk/blah/first
+    #   revision 4:  deletes blah [re-deleting trunk/blah/first pruned blah!]
     #   revision 5:  does nothing
     #
     # After fixing cvs2svn, the sequence (correctly) looks like this:
     #
-    #   revision 1:  adds trunk/blah/, adds trunk/blah/cookie
-    #   revision 2:  adds trunk/blah/NEWS
-    #   revision 3:  deletes trunk/blah/cookie
-    #   revision 4:  does nothing [because trunk/blah/cookie already deleted]
+    #   revision 1:  adds trunk/blah/, adds trunk/blah/first
+    #   revision 2:  adds trunk/blah/second
+    #   revision 3:  deletes trunk/blah/first
+    #   revision 4:  does nothing [because trunk/blah/first already deleted]
     #   revision 5:  deletes blah
     #
-    # The difference is in 4 and 5.  In revision 4, it's not correct to
-    # prune blah/, because NEWS is still in there, so revision 4 does
-    # nothing now.  But when we delete NEWS in 5, that should bubble up
-    # and prune blah/ instead.
+    # The difference is in 4 and 5.  In revision 4, it's not correct
+    # to prune blah/, because second is still in there, so revision 4
+    # does nothing now.  But when we delete second in 5, that should
+    # bubble up and prune blah/ instead.
     #
     # ### Note that empty revisions like 4 are probably going to become
     # ### at least optional, if not banished entirely from cvs2svn's
@@ -1020,9 +1020,6 @@ class PruneWithCare(Cvs2SvnTestCase):
     # ### revision property explaining what happened.  Need to think
     # ### about that.  In some sense, it's a bug in Subversion itself,
     # ### that such revisions don't show up in 'svn log' output.
-    #
-    # In the test below, 'trunk/full-prune/first' represents
-    # cookie, and 'trunk/full-prune/second' represents NEWS.
 
     conv = self.ensure_conversion()
 
@@ -1180,10 +1177,8 @@ class SimpleTags(Cvs2SvnTestCase):
       ('/%(trunk)s/proj/sub3/default', 'A'),
       ))
 
-    fromstr = ' (from /%(branches)s/B_FROM_INITIALS:14)'
-
     # Tag on rev 1.1.1.1 of all files in proj
-    conv.logs[14].check(sym_log_msg('B_FROM_INITIALS'), (
+    conv.logs[16].check(sym_log_msg('B_FROM_INITIALS'), (
       ('/%(branches)s/B_FROM_INITIALS (from /%(trunk)s:13)', 'A'),
       ('/%(branches)s/B_FROM_INITIALS/single-files', 'D'),
       ('/%(branches)s/B_FROM_INITIALS/partial-prune', 'D'),
@@ -1192,20 +1187,26 @@ class SimpleTags(Cvs2SvnTestCase):
     # The same, as a tag
     log = conv.find_tag_log('T_ALL_INITIAL_FILES')
     log.check(sym_log_msg('T_ALL_INITIAL_FILES',1), (
-      ('/%(tags)s/T_ALL_INITIAL_FILES'+fromstr, 'A'),
+      ('/%(tags)s/T_ALL_INITIAL_FILES (from /%(trunk)s:13)', 'A'),
+      ('/%(tags)s/T_ALL_INITIAL_FILES/single-files', 'D'),
+      ('/%(tags)s/T_ALL_INITIAL_FILES/partial-prune', 'D'),
       ))
 
     # Tag on rev 1.1.1.1 of all files in proj, except one
     log = conv.find_tag_log('T_ALL_INITIAL_FILES_BUT_ONE')
     log.check(sym_log_msg('T_ALL_INITIAL_FILES_BUT_ONE',1), (
-      ('/%(tags)s/T_ALL_INITIAL_FILES_BUT_ONE'+fromstr, 'A'),
+      ('/%(tags)s/T_ALL_INITIAL_FILES_BUT_ONE (from /%(trunk)s:13)', 'A'),
+      ('/%(tags)s/T_ALL_INITIAL_FILES_BUT_ONE/single-files', 'D'),
+      ('/%(tags)s/T_ALL_INITIAL_FILES_BUT_ONE/partial-prune', 'D'),
       ('/%(tags)s/T_ALL_INITIAL_FILES_BUT_ONE/proj/sub1/subsubB', 'D'),
       ))
 
     # The same, as a branch
     conv.logs[17].check(sym_log_msg('B_FROM_INITIALS_BUT_ONE'), (
-      ('/%(branches)s/B_FROM_INITIALS_BUT_ONE'+fromstr, 'A'),
+      ('/%(branches)s/B_FROM_INITIALS_BUT_ONE (from /%(trunk)s:13)', 'A'),
       ('/%(branches)s/B_FROM_INITIALS_BUT_ONE/proj/sub1/subsubB', 'D'),
+      ('/%(branches)s/B_FROM_INITIALS_BUT_ONE/single-files', 'D'),
+      ('/%(branches)s/B_FROM_INITIALS_BUT_ONE/partial-prune', 'D'),
       ))
 
 
@@ -1230,7 +1231,12 @@ def mixed_time_tag():
 
   log = conv.find_tag_log('T_MIXED')
   log.check_changes((
-    ('/%(tags)s/T_MIXED (from /%(branches)s/B_MIXED:20)', 'A'),
+    ('/%(tags)s/T_MIXED (from /%(trunk)s:19)', 'A'),
+    ('/%(tags)s/T_MIXED/single-files', 'D'),
+    ('/%(tags)s/T_MIXED/partial-prune', 'D'),
+    ('/%(tags)s/T_MIXED/proj/sub2/subsubA '
+     '(from /%(trunk)s/proj/sub2/subsubA:13)', 'R'),
+    ('/%(tags)s/T_MIXED/proj/sub3 (from /%(trunk)s/proj/sub3:18)', 'R'),
     ))
 
 
@@ -1242,7 +1248,7 @@ def mixed_time_branch_with_added_file():
 
   # A branch from the same place as T_MIXED in the previous test,
   # plus a file added directly to the branch
-  conv.logs[20].check(sym_log_msg('B_MIXED'), (
+  conv.logs[21].check(sym_log_msg('B_MIXED'), (
     ('/%(branches)s/B_MIXED (from /%(trunk)s:19)', 'A'),
     ('/%(branches)s/B_MIXED/partial-prune', 'D'),
     ('/%(branches)s/B_MIXED/single-files', 'D'),
@@ -3940,6 +3946,43 @@ def move_parent():
       ))
 
 
+@Cvs2SvnTestFunction
+def log_message_eols():
+  "nonstandard EOLs in log messages"
+
+  conv = ensure_conversion(
+      'log-message-eols',
+      )
+  conv.logs[2].check('The CRLF at the end of this line\nshould', (
+    ('/%(trunk)s/lottalogs', 'A'),
+    ))
+  conv.logs[3].check('The CR at the end of this line\nshould', (
+    ('/%(trunk)s/lottalogs', 'M'),
+    ))
+
+
+@Cvs2SvnTestFunction
+def missing_vendor_branch():
+  "default branch not present in RCS file"
+
+  conv = ensure_conversion(
+      'missing-vendor-branch',
+      )
+  if not conv.output_found(
+      r'.*vendor branch \'1\.1\.1\' is not present in file and will be ignored'
+      ):
+    raise Failure()
+
+
+@Cvs2SvnTestFunction
+def newphrases():
+  "newphrases in RCS files"
+
+  ensure_conversion(
+      'newphrases',
+      )
+
+
 ########################################################################
 # Run the tests
 
@@ -4148,9 +4191,13 @@ test_list = [
     include_empty_directories_no_prune,
     exclude_symbol_default,
     add_on_branch2,
-    XFail(branch_from_vendor_branch),
+    branch_from_vendor_branch,
     strange_default_branch,
     move_parent,
+    log_message_eols,
+    missing_vendor_branch,
+# 180:
+    newphrases,
     ]
 
 if __name__ == '__main__':

@@ -78,13 +78,11 @@ from cvs2svn_lib import config
 from cvs2svn_lib import changeset_database
 from cvs2svn_lib.common import CVSTextDecoder
 from cvs2svn_lib.log import logger
-from cvs2svn_lib.project import Project
 from cvs2svn_lib.git_revision_collector import GitRevisionCollector
 from cvs2svn_lib.external_blob_generator import ExternalBlobGenerator
 from cvs2svn_lib.git_output_option import GitRevisionMarkWriter
 from cvs2svn_lib.git_output_option import GitOutputOption
 from cvs2svn_lib.dvcs_common import KeywordHandlingPropertySetter
-from cvs2svn_lib.revision_manager import NullRevisionCollector
 from cvs2svn_lib.rcs_revision_manager import RCSRevisionReader
 from cvs2svn_lib.cvs_revision_manager import CVSRevisionReader
 from cvs2svn_lib.symbol_strategy import AllBranchRule
@@ -104,6 +102,8 @@ from cvs2svn_lib.symbol_transform import RegexpSymbolTransform
 from cvs2svn_lib.symbol_transform import IgnoreSymbolTransform
 from cvs2svn_lib.symbol_transform import NormalizePathsSymbolTransform
 from cvs2svn_lib.property_setters import AutoPropsPropertySetter
+from cvs2svn_lib.property_setters import ConditionalPropertySetter
+from cvs2svn_lib.property_setters import cvs_file_is_binary
 from cvs2svn_lib.property_setters import CVSBinaryFileDefaultMimeTypeSetter
 from cvs2svn_lib.property_setters import CVSBinaryFileEOLStyleSetter
 from cvs2svn_lib.property_setters import DefaultEOLStyleSetter
@@ -194,7 +194,8 @@ ctx.cvs_log_decoder = CVSTextDecoder(
         #'latin1',
         'ascii',
         ],
-    #fallback_encoding='ascii'
+    #fallback_encoding='ascii',
+    eol_fix='\n',
     )
 # You might want to be especially strict when converting filenames to
 # Unicode (e.g., maybe not specify a fallback_encoding).
@@ -443,8 +444,11 @@ ctx.file_property_setters.extend([
     # being executable:
     ExecutablePropertySetter(),
 
-    # The following causes keywords to be collapsed in all text to be
-    # committed:
+    # The following causes keywords to be untouched in binary files and
+    # collapsed in all text to be committed:
+    ConditionalPropertySetter(
+        cvs_file_is_binary, KeywordHandlingPropertySetter('untouched'),
+        ),
     KeywordHandlingPropertySetter('collapsed'),
 
     ])
@@ -597,5 +601,9 @@ run_options.set_project(
     # See the definition of global_symbol_strategy_rules above for a
     # description of this option:
     symbol_strategy_rules=global_symbol_strategy_rules,
+
+    # Exclude paths from the conversion. Should be relative to
+    # repository path and use forward slashes:
+    #exclude_paths=['file-to-exclude.txt,v', 'dir/to/exclude'],
     )
 

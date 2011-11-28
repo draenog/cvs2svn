@@ -88,8 +88,7 @@ from cvs2svn_lib.context import Ctx
 from cvs2svn_lib.log import logger
 from cvs2svn_lib.artifact_manager import artifact_manager
 from cvs2svn_lib.cvs_item import CVSRevisionModification
-from cvs2svn_lib.database import Database
-from cvs2svn_lib.database import IndexedDatabase
+from cvs2svn_lib.indexed_database import IndexedDatabase
 from cvs2svn_lib.rcs_stream import RCSStream
 from cvs2svn_lib.rcs_stream import MalformedDeltaException
 from cvs2svn_lib.keyword_expander import expand_keywords
@@ -101,7 +100,8 @@ from cvs2svn_lib.serializer import CompressingSerializer
 from cvs2svn_lib.serializer import PrimedPickleSerializer
 from cvs2svn_lib.apple_single_filter import get_maybe_apple_single
 
-import cvs2svn_rcsparse
+from cvs2svn_lib.rcsparser import Sink
+from cvs2svn_lib.rcsparser import parse
 
 
 class TextRecord(object):
@@ -447,7 +447,7 @@ class TextRecordDatabase:
     return '\n'.join(retval)
 
 
-class _Sink(cvs2svn_rcsparse.Sink):
+class _Sink(Sink):
   def __init__(self, revision_collector, cvs_file_items):
     self.revision_collector = revision_collector
     self.cvs_file_items = cvs_file_items
@@ -610,7 +610,7 @@ class InternalRevisionCollector(RevisionCollector):
     # A map from cvs_rev_id to TextRecord instance:
     self.text_record_db = TextRecordDatabase(self._delta_db, NullDatabase())
 
-    cvs2svn_rcsparse.parse(
+    parse(
         open(cvs_file_items.cvs_file.rcs_path, 'rb'),
         _Sink(self, cvs_file_items),
         )
@@ -629,6 +629,12 @@ class InternalRevisionReader(RevisionReader):
   """A RevisionReader that reads the contents from an own delta store."""
 
   def __init__(self, compress):
+    # Only import Database if an InternalRevisionReader is really
+    # instantiated, because the import fails if a decent dbm is not
+    # installed.
+    from cvs2svn_lib.database import Database
+    self._Database = Database
+
     self._compress = compress
 
   def register_artifacts(self, which_pass):
@@ -661,7 +667,7 @@ class InternalRevisionReader(RevisionReader):
     serializer = MarshalSerializer()
     if self._compress:
       serializer = CompressingSerializer(serializer)
-    self._co_db = Database(
+    self._co_db = self._Database(
         artifact_manager.get_temp_file(config.CVS_CHECKOUT_DB),
         DB_OPEN_NEW, serializer,
         )

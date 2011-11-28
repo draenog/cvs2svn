@@ -92,6 +92,7 @@ class DVCSRunOptions(RunOptions):
         project_cvs_repos_path,
         symbol_transforms=None,
         symbol_strategy_rules=[],
+        exclude_paths=[],
         ):
     """Set the project to be converted.
 
@@ -108,6 +109,7 @@ class DVCSRunOptions(RunOptions):
         0,
         project_cvs_repos_path,
         symbol_transforms=symbol_transforms,
+        exclude_paths=exclude_paths,
         )
 
     self.projects = [project]
@@ -309,6 +311,18 @@ class DVCSOutputOption(OutputOption):
       else:
         for sub_cvs_path in self._get_all_files(subnode):
           yield sub_cvs_path
+
+
+class ExpectedDirectoryError(Exception):
+  """A file was found where a directory was expected."""
+
+  pass
+
+
+class ExpectedFileError(Exception):
+  """A directory was found where a file was expected."""
+
+  pass
 
 
 class MirrorUpdater(object):

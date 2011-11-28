@@ -59,13 +59,10 @@
 
 
 # Import some modules that are used in setting the options:
-import re
-
 from cvs2svn_lib import config
 from cvs2svn_lib import changeset_database
 from cvs2svn_lib.common import CVSTextDecoder
 from cvs2svn_lib.log import logger
-from cvs2svn_lib.project import Project
 from cvs2svn_lib.svn_output_option import DumpfileOutputOption
 from cvs2svn_lib.svn_output_option import ExistingRepositoryOutputOption
 from cvs2svn_lib.svn_output_option import NewRepositoryOutputOption
@@ -271,7 +268,8 @@ ctx.cvs_log_decoder = CVSTextDecoder(
         #'latin1',
         'ascii',
         ],
-    #fallback_encoding='ascii'
+    #fallback_encoding='ascii',
+    eol_fix='\n',
     )
 # You might want to be especially strict when converting filenames to
 # Unicode (e.g., maybe not specify a fallback_encoding).
@@ -652,6 +650,10 @@ run_options.add_project(
         # Additional, project-specific symbol strategy rules can
         # be added here.
         ] + global_symbol_strategy_rules,
+
+    # Exclude paths from the conversion. Should be relative to
+    # repository path and use forward slashes:
+    #exclude_paths=['file-to-exclude.txt,v', 'dir/to/exclude'],
     )
 
 # Add a second project, to be stored to projA/trunk, projA/branches,

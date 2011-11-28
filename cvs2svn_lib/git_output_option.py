@@ -40,18 +40,6 @@ from cvs2svn_lib.artifact_manager import artifact_manager
 from cvs2svn_lib.notescreator import NotesCreator
 
 
-class ExpectedDirectoryError(Exception):
-  """A file was found where a directory was expected."""
-
-  pass
-
-
-class ExpectedFileError(Exception):
-  """A directory was found where a file was expected."""
-
-  pass
-
-
 class GitRevisionWriter(MirrorUpdater):
 
   def start(self, mirror, f):

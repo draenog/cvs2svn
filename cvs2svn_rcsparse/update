@@ -1,0 +1,85 @@
+#!/usr/bin/env python
+
+"""Update the rcsparse library from ViewVC."""
+
+import sys
+import os
+import subprocess
+import re
+import optparse
+
+
+VIEWVC_REPOS = 'http://viewvc.tigris.org/svn/viewvc'
+BRANCH = 'trunk'
+RCSPARSE_URL = '/'.join([VIEWVC_REPOS, BRANCH, 'lib/vclib/ccvs/rcsparse'])
+LICENSE_URL = '/'.join([VIEWVC_REPOS, BRANCH, 'LICENSE.html'])
+
+DEST = os.path.dirname(__file__)
+
+INIT_TEXT = """\
+# This file causes Python to treat its containing directory it as a
+# package.  Please note that the contents of this file differ from
+# those of the __init__.py file distributed with ViewVC.
+
+"""
+
+
+def get_current_revision():
+    revision_re = re.compile(r'^Revision\:\s*(?P<revision>\d+)$')
+
+    cmd = ['svn', 'info', VIEWVC_REPOS]
+    sys.stderr.write('%s\n' % (' '.join(cmd),))
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    (out, err) = p.communicate()
+    for line in out.splitlines():
+        m = revision_re.match(line)
+        if m:
+            return int(m.group('revision'))
+
+    sys.exit(
+        'Could not determine the current revision of the ViewVC repository!'
+        )
+
+def export(url, revision, dest):
+    cmd = ['svn', 'export', '-r', str(revision), '--force', url, dest]
+    sys.stderr.write('%s\n' % (' '.join(cmd),))
+    retcode = subprocess.call(cmd)
+
+    if retcode:
+        sys.exit('Export failed!')
+
+
+def main(args):
+    parser = optparse.OptionParser(
+        description=__doc__,
+        )
+
+    parser.add_option(
+        '--revision', '-r', metavar='REV',
+        action='store', type='int', default=None,
+        help='download the specific revision REV',
+        )
+
+    (options, args) = parser.parse_args(args)
+
+    if args:
+        parser.error('Unexpected arguments: %s' % (' '.join(args),))
+
+    if options.revision is None:
+        options.revision = get_current_revision()
+
+    export(RCSPARSE_URL, options.revision, DEST)
+    export(LICENSE_URL, options.revision, os.path.join(DEST, 'LICENSE.html'))
+
+    # Record which version of the upstream source was downloaded:
+    open(os.path.join(DEST, 'UPSTREAM_SOURCE'), 'w').write(
+        '%s@%d\n' % (RCSPARSE_URL, options.revision,)
+        )
+
+    # Replace the upstream __init__.py file, which does some stuff that we
+    # don't want:
+    open(os.path.join(DEST, '__init__.py'), 'w').write(INIT_TEXT)
+
+
+main(sys.argv[1:])
+
